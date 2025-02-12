@@ -1,0 +1,23 @@
+{
+  "name": "routescan-to-berascan",
+  "version": "1.0.0",
+  "description": "Tool to help migrate contract verifications from Routescan to BeraScan",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "verify": "node src/index.js"
+  },
+  "keywords": [
+    "berachain",
+    "verification",
+    "routescan",
+    "berascan"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.7",
+    "dotenv": "^16.4.1"
+  }
+}
