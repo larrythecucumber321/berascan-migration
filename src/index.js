@@ -1,12 +1,9 @@
 import axios from "axios";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 // Configuration
-const API_KEY = process.env.API_KEY;
+const API_KEY = "N13T21INZV8G15JRWH5H2CATS1TPDM5GMC";
 const contractAddress = process.argv[2];
 const WORKING_DIR = "./bera";
 
@@ -15,14 +12,24 @@ const getRoutescanUrl = (address) =>
   `https://api.routescan.io/v2/network/mainnet/evm/80094/etherscan/contract/getsourcecode?address=${address}`;
 const BERASCAN_API_URL = "https://api.berascan.com/api";
 
-function extractContractName(sourceCode) {
+function extractContractName(sourceCode, strContractName) {
   try {
     // Parse the SourceCode content
     const parsedSource = JSON.parse(sourceCode);
-    // Get the first key from sources object
-    const firstSourceKey = Object.keys(parsedSource.sources)[0];
-    return `${firstSourceKey}:${
-      parsedSource.ContractName || firstSourceKey.split("/").pop().split(".")[0]
+    const sources = parsedSource.sources;
+
+    // Find the key that contains the strContractName
+    const matchingKey = Object.keys(sources).find((key) =>
+      key.includes(strContractName)
+    );
+
+    if (!matchingKey) {
+      console.error("Contract name not found in sources.");
+      return null;
+    }
+
+    return `${matchingKey}:${
+      parsedSource.ContractName || matchingKey.split("/").pop().split(".")[0]
     }`;
   } catch (error) {
     console.error("Error parsing contract name:", error);
@@ -40,7 +47,9 @@ async function ensureDirectoryExists(dir) {
 
 async function fetchAndSaveSourceCode() {
   console.log("Fetching contract source code from RouteScan...");
+  console.log(contractAddress);
   try {
+    console.log(getRoutescanUrl(contractAddress));
     const response = await axios.get(getRoutescanUrl(contractAddress));
     const sourceFilePath = path.join(WORKING_DIR, `${contractAddress}.json`);
 
@@ -74,7 +83,11 @@ async function verifyContract(sourceCode, jsonContent) {
 
   // Extract contract name from source code
   const contractName =
-    extractContractName(sourceCode) || jsonContent.ContractName || "Contract";
+    extractContractName(sourceCode, jsonContent.ContractName) ||
+    jsonContent.ContractName ||
+    "Contract";
+
+  console.log(contractName);
 
   const formData = new URLSearchParams();
   formData.append("apikey", API_KEY);
@@ -87,7 +100,7 @@ async function verifyContract(sourceCode, jsonContent) {
   formData.append("optimizationUsed", jsonContent.OptimizationUsed);
   formData.append("runs", jsonContent.Runs);
   formData.append(
-    "constructorArguments",
+    "constructorArguements",
     jsonContent.ConstructorArguments?.replace(/^0x/, "") || ""
   );
   formData.append("sourceCode", sourceCode);
@@ -104,16 +117,10 @@ async function verifyContract(sourceCode, jsonContent) {
         "Content-Type": "application/x-www-form-urlencoded",
       },
     });
-    console.log("Verification Response:", response.data);
-
+    console.log("✅ Verification Response:", response.data);
     console.log(
-      `📝 Contract: https://berascan.com/address/${contractAddress}#code`
+      `View verification at: https://berascan.com/address/${contractAddress}#code`
     );
-
-    response.data.status === "1" &&
-      console.log(
-        `⌛ Verification status: https://api.berascan.com/api?module=contract&action=checkverifystatus&guid=${response.data.result}&apikey=${API_KEY}`
-      );
     return response.data;
   } catch (error) {
     console.error("❌ Failed to verify contract on BeraScan:", error.message);
